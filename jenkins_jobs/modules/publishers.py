@@ -38,6 +38,7 @@ from jenkins_jobs.errors import MissingAttributeError
 import jenkins_jobs.modules.base
 from jenkins_jobs.modules import hudson_model
 import jenkins_jobs.modules.helpers as helpers
+from jenkins_jobs.registry import register_expansion
 
 
 def allure(registry, xml_parent, data):
@@ -3545,6 +3546,7 @@ def post_tasks(registry, xml_parent, data):
             task, mapping, fail_required=True)
 
 
+@register_expansion('builders')
 def postbuildscript(registry, xml_parent, data):
     """yaml: postbuildscript
     Executes additional builders, script or Groovy after the build is

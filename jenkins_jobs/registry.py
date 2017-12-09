@@ -16,6 +16,7 @@
 # Manage Jenkins plugin module registry.
 
 import copy
+import functools
 import logging
 import operator
 import pkg_resources
@@ -30,6 +31,21 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+def register_expansion(expansion):
+    # TODO(electrofelix) validated expansion is in the correct
+    # format
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            expansions = func.getattr('expansion', [])
+            expansions.append(expansion)
+            func.expansion = expansions
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class MacroRegistry(object):
@@ -257,7 +273,6 @@ class ModuleRegistry(object):
         self.modules_by_component_type = {}
         self.handlers = {}
         self.jjb_config = jjb_config
-        self.masked_warned = {}
 
         if plugins_list is None:
             self.plugins_dict = {}
@@ -380,6 +395,11 @@ class ModuleRegistry(object):
             name = component
             component_data = {}
 
+        # TODO(electrofelix)
+        # move all of the following code block to a separate function
+        # so that we can loop through the retrieval of the entrypoint
+        # from cache or lookup in isolation.
+
         # Look for a component function defined in an entry point
         eps = self._entry_points_cache.get(component_list_type)
         if eps is None:
@@ -439,6 +459,15 @@ class ModuleRegistry(object):
 
         if name in eps:
             func = eps[name].load()
+            # TODO(electrolfelix)
+            # may need to expand component_data at this point again
+            # if the function referenced contains markers indicating
+            # it will use other entrypoints to execute.
+            if func.getattr('expansion', None):
+                # we need to take the component data associated with the
+                # expansion attributes and make sure to dispatch those.
+                pass
+
             func(self, xml_parent, component_data)
         else:
             raise JenkinsJobsException("Unknown entry point or macro '{0}' "
